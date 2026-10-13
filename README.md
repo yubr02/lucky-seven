@@ -2,6 +2,8 @@
 
 Jogo de portfólio com backend **Go**, **PostgreSQL** e interface **React/TypeScript**. O foco é mostrar um fluxo completo de aposta fictícia: validar, sortear, atualizar créditos e registrar o resultado de forma atômica, com proteção contra cobrança duplicada.
 
+Para apresentar o projeto, siga o [roteiro de 5–7 minutos](docs/roteiro-apresentacao.md) e o [guia de execução nativa nesta máquina](docs/apresentacao-local.md). A apresentação será local, sem deploy público.
+
 ## O que está implementado
 
 - API REST com `net/http`, validação de entrada e erros de domínio; composição e ciclo de vida com Uber Fx.
