@@ -189,3 +189,4 @@ footer { display: flex; align-items: center; justify-content: space-between; gap
 .demo-preview strong { font-size: 14px; }
 .demo-content .error-message p { margin: 8px 0 12px; }
 @media (max-width: 600px) { .history-pagination { gap: 10px; }.history-pagination .text-button { padding: 10px 12px; }.history-pagination > span { font-size: 10px; }.play-dialog { padding: 20px; }.play-dialog h2 { font-size: 21px; }.demo-controls { flex-direction: column; align-items: stretch; }.demo-controls .demo-field { max-width: none; }.demonstration summary { padding: 18px; }.demonstration summary > span { font-size: 14px; }.demo-content { padding: 0 18px 20px; } }
+.live-status { color: #b9c89e; font-size: 9px; line-height: 1.6; margin-bottom: 12px; }

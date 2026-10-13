@@ -16,6 +16,7 @@ import (
 	"lucky-seven/backend/internal/config"
 	"lucky-seven/backend/internal/game"
 	httpapi "lucky-seven/backend/internal/http"
+	"lucky-seven/backend/internal/realtime"
 	"lucky-seven/backend/internal/storage/postgres"
 )
 
@@ -24,11 +25,18 @@ var Module = fx.Module("api",
 		newPool,
 		fx.Annotate(postgres.New, fx.As(new(game.Repository))),
 		game.New,
-		httpapi.NewRouter,
+		newHub,
+		httpapi.NewRouterWithEvents,
 		newServer,
 	),
 	fx.Invoke(func(*http.Server) {}),
 )
+
+func newHub(lc fx.Lifecycle) *realtime.Hub {
+	hub := realtime.New()
+	lc.Append(fx.Hook{OnStop: func(context.Context) error { hub.Close(); return nil }})
+	return hub
+}
 
 func New(cfg config.Config) *fx.App {
 	return fx.New(fx.Supply(cfg), Module,

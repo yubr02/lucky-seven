@@ -3,6 +3,7 @@ import { ApiError, getBalance, getHistory, play, type Play } from '../../service
 import { useGameEffects } from './useGameEffects'
 import History from './History'
 import Demonstration from './Demonstration'
+import { useLiveUpdates } from './useLiveUpdates'
 
 type Pending = { bet: number; key: string }
 const pendingKey = 'lucky-seven.pending.v1'
@@ -28,6 +29,21 @@ export default function StartScreen() {
   const [syncError, setSyncError] = useState('')
   const lock = useRef(false)
   const effects = useGameEffects()
+  const live = useLiveUpdates()
+
+  useEffect(() => {
+    // Defer remote refreshes during a local play/animation or history request.
+    if (!live.revision || busy || loading) return
+    let active = true
+    Promise.all([getBalance(), getHistory()]).then(([wallet, rows]) => {
+      if (!active) return
+      setBalance(wallet.balance)
+      setHistory(previous => [...rows, ...previous.filter(row => rows.length > 0 && row.id < rows[rows.length - 1].id)])
+      if (history.length < 50) setMore(rows.length === 50)
+      setSyncError('')
+    }).catch((err: unknown) => { if (active) setSyncError(message(err)) })
+    return () => { active = false }
+  }, [live.revision, busy, loading])
 
   async function refresh() {
     const [wallet, rows] = await Promise.all([getBalance(), getHistory()])
@@ -110,6 +126,7 @@ export default function StartScreen() {
       <section className="play-heading" id="jogar"><div><p className="eyebrow">TRÊS NÚMEROS. SUA PRÓXIMA COMBINAÇÃO.</p><h1>Lucky <em>Seven.</em><span className="live-badge">DEMO</span></h1><p>Escolha sua aposta e jogue. Apenas créditos fictícios.</p></div><div className="wallet" id="carteira"><span>SUA CARTEIRA</span><strong>{balance === null ? '—' : credits(balance)} <small>CR</small></strong><span>créditos fictícios disponíveis</span></div></section>
       <div className="game-layout">
         <section className={`machine ${result && !busy ? `machine--${resultKind}` : ''}`} aria-labelledby="machine-title">
+          <div className="live-status" role="status">{live.connected ? '● Atualizações em tempo real conectadas' : '○ Reconectando atualizações · você pode continuar jogando'}</div>
           <div className="machine-heading"><h2 id="machine-title">Sua próxima jogada</h2><button className="sound-toggle" type="button" aria-pressed={effects.sound} onClick={() => void effects.toggleSound()}>{effects.sound ? '♪ Som ligado' : '♪ Som desligado'}</button></div>
           <div className="reels" aria-label={busy ? 'Revelando os números da jogada' : result ? `Números sorteados: ${result.numbers.join(', ')}` : 'Aguardando a primeira jogada'} aria-busy={busy}>
             {(result?.numbers ?? ['?', '?', '?']).map((number, index) => {
