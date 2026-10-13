@@ -9,6 +9,12 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       proxy: {
+        '/api/events': {
+          target: env.VITE_API_TARGET || 'http://localhost:8080',
+          ws: true,
+          // Preserve Host so the backend can validate the browser's Origin.
+          changeOrigin: false,
+        },
         '/api': {
           target: env.VITE_API_TARGET || 'http://localhost:8080',
           changeOrigin: true,

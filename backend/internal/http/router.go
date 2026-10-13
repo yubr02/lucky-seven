@@ -9,11 +9,19 @@ import (
 	"strconv"
 
 	"lucky-seven/backend/internal/game"
+	"lucky-seven/backend/internal/realtime"
 )
 
 func NewRouter(service *game.Service) http.Handler {
+	return NewRouterWithEvents(service, nil)
+}
+
+func NewRouterWithEvents(service *game.Service, events *realtime.Hub) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
+	if events != nil {
+		mux.Handle("GET /api/events", events)
+	}
 	if service != nil {
 		mux.HandleFunc("POST /api/play", func(w http.ResponseWriter, r *http.Request) {
 			var body struct {
@@ -39,6 +47,10 @@ func NewRouter(service *game.Service) http.Handler {
 			if err != nil {
 				writeError(w, err)
 				return
+			}
+			// Play has committed (or returned a persisted replay). Never notify errors.
+			if events != nil {
+				events.Publish()
 			}
 			writeJSON(w, http.StatusOK, result)
 		})

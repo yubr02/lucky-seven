@@ -148,8 +148,8 @@ O CI roda no [GitHub Actions](https://github.com/yubr02/lucky-seven/actions). El
 
 - Uma carteira fixa de demonstração, sem autenticação ou dinheiro real.
 - PostgreSQL local usa o usuário de desenvolvimento; produção exigiria separação de permissões e gestão de segredos.
-- Ainda não há WebSockets, AWS ou divisão em microsserviços.
-- Evoluir em mudanças pequenas: evolução do caso de uso, notificações WebSocket e um fluxo assíncrono delimitado.
+- Ainda não há AWS ou divisão em microsserviços. As notificações WebSocket atendem a uma única instância da API.
+- Evoluir em mudanças pequenas: evolução do caso de uso e um fluxo assíncrono delimitado.
 
 O código foi desenvolvido com assistência de IA. As decisões, os testes e as limitações estão documentados para permitir revisão e explicação pelo autor.
 
@@ -162,3 +162,14 @@ O hook do banco faz `Ping` antes de o HTTP abrir a porta. A abertura da porta é
 Os testes validam o grafo de dependências, a inicialização e parada reais, falha de conexão e rollback após erro de bind. O pool é fechado explicitamente se o próprio hook de inicialização falhar, pois nesse caso o Fx não executa seu `OnStop`.
 
 Referência: [ciclo de vida oficial do Uber Fx](https://uber-go.github.io/fx/lifecycle.html).
+## Atualizações em tempo real
+
+`GET /api/events` abre um WebSocket de notificações da carteira fixa `demo`. A aposta continua em `POST /api/play`. Somente depois de o serviço retornar sucesso (commit ou replay persistido), o handler publica `{"type":"wallet.changed"}`. Falhas de validação, saldo ou persistência não publicam eventos.
+
+Ao conectar, o cliente recebe `{"type":"ready"}` e consulta saldo e histórico por REST. O frontend repete essa consulta após notificações, ao voltar à aba e ao reconectar. A reconexão usa espera progressiva de 1 a 15 segundos; atualizações ficam adiadas durante uma jogada/animação local. Notificações não alteram o resultado da máquina nem geram apostas.
+
+O hub é em memória e envia apenas avisos, sem saldo no payload. Há até 64 clientes, uma notificação pendente por cliente, timeout de escrita, heartbeat e encerramento pelo ciclo de vida Fx. O proxy Vite preserva Host no WebSocket para manter a verificação de Origin, sem liberar origens arbitrárias.
+
+Limitações: entrega best-effort, sem fila durável ou garantia de entrega entre commit e publicação. Um replay pode gerar outro aviso de atualização, sem cobrar novamente. Escritas diretas no banco não notificam. Múltiplas instâncias precisariam de distribuição de eventos; o banco permanece a fonte de verdade. A demo não tem autenticação, portanto todos os clientes observam a mesma carteira fictícia.
+
+Validação: testes Go verificam duas conexões, notificações somente em sucesso, coalescência concorrente, nova conexão, shutdown e rejeição de origem externa. O fluxo de duas abas e recuperação após ficar offline também foi exercitado no Chrome com a API local.

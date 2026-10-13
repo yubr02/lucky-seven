@@ -12,3 +12,5 @@
 - Testes de integração usam `TEST_DATABASE_URL` e criam/removem um schema isolado por teste, sem limpar tabelas existentes.
 - Uber Fx fica restrito a `internal/app`: registra os construtores e gerencia pool e HTTP com hooks. Configuração continua validada antes da composição. Domínio e persistência não importam Fx.
 - HTTP abre a porta somente após o Ping do PostgreSQL. Falha de bind reverte recursos iniciados. No shutdown, HTTP encerra antes do banco, com timeout configurável e fechamento forçado como fallback.
+- WebSocket `/api/events` entrega invalidações best-effort da carteira demo após sucesso do caso de uso. O cliente consulta REST ao conectar/reconectar; o hub em memória não substitui banco nem fila durável.
+- O hub é encerrado por Fx e limita conexões, notificações pendentes e tempo de escrita. Origem é validada contra Host; o proxy WebSocket preserva esse header.
