@@ -1,10 +1,10 @@
-﻿# Lucky Seven
+# Lucky Seven
 
 Jogo de portfólio com backend **Go**, **PostgreSQL** e interface **React/TypeScript**. O foco é mostrar um fluxo completo de aposta fictícia: validar, sortear, atualizar créditos e registrar o resultado de forma atômica, com proteção contra cobrança duplicada.
 
 ## O que está implementado
 
-- API REST com `net/http`, validação de entrada e erros de domínio.
+- API REST com `net/http`, validação de entrada e erros de domínio; composição e ciclo de vida com Uber Fx.
 - Sorteio uniforme com `crypto/rand` e regras de premiação testadas nas 1.000 combinações possíveis.
 - Transação PostgreSQL com bloqueio da carteira e chave de idempotência por jogador.
 - Histórico paginado, saldo persistente e recuperação de resposta perdida.
@@ -142,13 +142,23 @@ O workflow `.github/workflows/ci.yml` executa em push, pull request ou manualmen
 
 `scripts/smoke-api.py` usa uma chave fixa e pressupõe uma carteira descartável iniciada com 1.000 créditos. Execute somente no banco temporário de CI, nunca na carteira usada para jogar.
 
-A configuração de CI está versionada, mas só haverá resultado do GitHub Actions após publicar o repositório. Docker precisa ser validado em um host com Docker; os testes nativos não substituem esse check.
+O CI roda no [GitHub Actions](https://github.com/yubr02/lucky-seven/actions). Ele valida também os containers em Linux; os testes nativos não substituem esse check.
 
 ## Limitações e próximos passos
 
 - Uma carteira fixa de demonstração, sem autenticação ou dinheiro real.
 - PostgreSQL local usa o usuário de desenvolvimento; produção exigiria separação de permissões e gestão de segredos.
-- Ainda não há Uber Fx, WebSockets, AWS ou divisão em microsserviços.
-- Evoluir em mudanças pequenas: arquitetura/Fx, notificações WebSocket e um fluxo assíncrono delimitado.
+- Ainda não há WebSockets, AWS ou divisão em microsserviços.
+- Evoluir em mudanças pequenas: evolução do caso de uso, notificações WebSocket e um fluxo assíncrono delimitado.
 
 O código foi desenvolvido com assistência de IA. As decisões, os testes e as limitações estão documentados para permitir revisão e explicação pelo autor.
+
+## Uber Fx
+
+`cmd/api/main.go` carrega a configuração e executa `app.New(cfg).Run()`. O módulo em `internal/app` registra os construtores do pool PostgreSQL, repository, serviço de jogo, rotas e servidor HTTP. `fx.Annotate` expõe o adaptador PostgreSQL como `game.Repository`, mantendo o domínio independente do Fx.
+
+O hook do banco faz `Ping` antes de o HTTP abrir a porta. A abertura da porta é síncrona: se estiver ocupada, o startup falha e o Fx fecha o pool já iniciado. No encerramento, os hooks rodam na ordem inversa: HTTP conclui requisições em andamento, depois o pool é fechado. Se o prazo HTTP expirar, as conexões são encerradas. Uma falha inesperada no servidor solicita shutdown com código de saída 1.
+
+Os testes validam o grafo de dependências, a inicialização e parada reais, falha de conexão e rollback após erro de bind. O pool é fechado explicitamente se o próprio hook de inicialização falhar, pois nesse caso o Fx não executa seu `OnStop`.
+
+Referência: [ciclo de vida oficial do Uber Fx](https://uber-go.github.io/fx/lifecycle.html).
